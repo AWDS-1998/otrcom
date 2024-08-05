@@ -7,37 +7,8 @@ const filesToCopy = ["otr.js", "otr.otr"];
 // المسار الحالي للحزمة
 const currentDir = __dirname;
 
-// دالة للبحث عن مجلد node_modules في المسارات العليا
-function findNodeModulesInParent(dir) {
-  const parentDir = path.dirname(dir);
-
-  if (parentDir === dir) {
-    // وصلنا إلى الجذر ولم نجد node_modules
-    return null;
-  }
-
-  const nodeModulesPath = path.join(parentDir, "node_modules");
-  if (fs.existsSync(nodeModulesPath)) {
-    return parentDir;
-  }
-
-  return findNodeModulesInParent(parentDir);
-}
-
-// العثور على المسار الذي يحتوي على node_modules في المسارات العليا
-const projectRoot = findNodeModulesInParent(currentDir);
-
-if (!projectRoot) {
-  console.error("لم يتم العثور على مجلد node_modules في المسارات العليا");
-  process.exit(1);
-}
-
-// الجذر النهائي للمشروع بجانب node_modules
-const destDir = projectRoot;
-
-// طباعة المسارات
-console.log(`currentDir is: ${currentDir}`);
-console.log(`node_modules is: ${path.join(destDir, "node_modules")}`);
+// الجذر النهائي للمشروع
+const destDir = path.resolve(currentDir, "../../../../");
 
 filesToCopy.forEach((file) => {
   const srcFile = path.join(currentDir, file);

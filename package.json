@@ -1,24 +1,32 @@
 {
-    "keywords": [
-        "git",
-        "github",
-        "commit",
-        "push",
-        "pull",
-        "repo"
-    ],
-    "name": "git-otcom",
-    "version": "1.0.0",
-    "description": "this package to well save your time",
-    "main": "otr.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "otrcom",
-    "license": "ISC",
-    "dependencies": {
-        "inquirer": "^10.1.6",
-        "git-otrcom": "https://github.com/AWDS-1998/otrcom.git"
-    },
-    "postinstall": "cp otr.js otr.otr ../../"
+  "keywords": [
+    "git",
+    "github",
+    "commit",
+    "push",
+    "pull",
+    "repo"
+  ],
+  "name": "git-otrcom",
+  "version": "1.0.15",
+  "description": "this package to well save your time",
+  "main": "otr.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node index.js"
+  },
+  "author": "otrcom",
+  "license": "ISC",
+  "dependencies": {
+    "inquirer": "^10.1.6",
+    "shx": "^0.3.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AWDS-1998/otrcom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AWDS-1998/otrcom/issues"
+  },
+  "homepage": "https://github.com/AWDS-1998/otrcom#readme"
 }

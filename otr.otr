@@ -1,0 +1,268 @@
+import fs from "fs";
+import inquirer from "inquirer";
+import readline from "readline";
+import { exec } from "child_process";
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    completer: (line) => {
+        const completions =
+            "VAR_DB_DATABASE VAR_DB_USERNAME VAR_DB_PASSWORD VITE_API_BASE_URI".split(
+                " "
+            );
+        const hits = completions.filter((c) => c.startsWith(line));
+        return [hits.length ? hits : completions, line];
+    },
+});
+
+const askSetupProject = async () => {
+    const answer = await inquirer.prompt([
+        {
+            type: "confirm",
+            name: "setupProject",
+            message: "setup settings for your project ? (y/n)",
+            default: true,
+        },
+    ]);
+    return answer.setupProject;
+};
+
+// دالة لقراءة محتويات ملف .env
+let envFile = fs.readFileSync("./.env", "utf-8");
+let envVars = Object.fromEntries(
+    envFile
+        .split("\n")
+        .filter((line) => line && !line.startsWith("#"))
+        .map((line) => line.split("="))
+);
+
+// دالة لتحديث أو إضافة متغيرات إلى ملف .env
+const updateEnvFile = (key, value, backup = false) => {
+    const regex = new RegExp(`^${key}=.*$`, "m");
+
+    if (envVars[key] && !backup) {
+        // إنشاء نسخة احتياطية
+        updateEnvFile(`BK_${key}`, envVars[key], true);
+    }
+
+    // إزالة المتغيرات القديمة الفارغة
+    envFile = envFile.replace(new RegExp(`^${key}=$`, "gm"), "");
+
+    if (envVars[key]) {
+        envFile = envFile.replace(regex, `${key}=${value}`);
+    } else {
+        envFile += `\n${key}=${value}`;
+    }
+
+    // تحديث كائن envVars بالقيمة الجديدة
+    envVars[key] = value;
+};
+
+// دالة لنسخ القيم من المتغيرات VAR_ إلى DB_ بشكل دائم
+const copyValuesToDBVars = () => {
+    const dbVars = {
+        DB_DATABASE: "VAR_DB_DATABASE",
+        DB_USERNAME: "VAR_DB_USERNAME",
+        DB_PASSWORD: "VAR_DB_PASSWORD",
+    };
+
+    for (const [dbVar, varKey] of Object.entries(dbVars)) {
+        if (envVars[varKey]) {
+            updateEnvFile(dbVar, envVars[varKey]);
+            console.log(`Updated ${dbVar} with value from ${varKey}`);
+        }
+    }
+};
+
+// دالة لطلب المتغيرات المفقودة من المستخدم
+const promptForMissingVars = async () => {
+    let needsUpdate = false;
+
+    // التحقق من وجود المتغيرات المطلوبة وطلب قيمتها إذا كانت مفقودة
+    const varKeys = ["VAR_DB_DATABASE", "VAR_DB_USERNAME", "VAR_DB_PASSWORD"];
+    for (const key of varKeys) {
+        if (!envVars[key]) {
+            const answer = await inquirer.prompt([
+                {
+                    type: "input",
+                    name: key,
+                    message: `Enter value for ${key}:`,
+                },
+            ]);
+            updateEnvFile(key, answer[key]);
+            needsUpdate = true;
+        }
+    }
+
+    if (needsUpdate) {
+        console.log(".env file updated with new variables.");
+
+        const answer = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "confirmUpdate",
+                message: "Do you want to save these values in the .env file?",
+                default: true,
+            },
+        ]);
+
+        if (answer.confirmUpdate) {
+            fs.writeFileSync("./.env", envFile);
+            console.log(".env file has been updated with new values.");
+        }
+    }
+};
+
+// دالة للتحقق من المتغيرات المفقودة وإضافة متغيرات جديدة
+const checkAndUpdateEnv = async () => {
+    // نسخ القيم من المتغيرات VAR_ إلى DB_ بشكل دائم
+    copyValuesToDBVars();
+
+    await promptForMissingVars();
+
+    // طلب إضافة متغيرات إضافية
+    let addMore = true;
+    while (addMore) {
+        const answer = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "addMore",
+                message: "Do you want to add more variables?",
+                default: false,
+            },
+        ]);
+
+        if (answer.addMore) {
+            const { key } = await inquirer.prompt([
+                {
+                    type: "input",
+                    name: "key",
+                    message: "Enter the name of the new variable:",
+                    default: "VITE_API_BASE_URI",
+                },
+            ]);
+
+            const value = await inquirer
+                .prompt([
+                    {
+                        type: "input",
+                        name: "value",
+                        message: `Enter the value for ${key}:`,
+                        default: "",
+                    },
+                ])
+                .then((answer) => answer.value);
+
+            if (value) {
+                updateEnvFile(key, value);
+                console.log(`Added ${key}=${value} to .env file.`);
+            } else {
+                console.log(`No value provided for ${key}, skipping.`);
+            }
+        } else {
+            addMore = false;
+        }
+    }
+
+    fs.writeFileSync("./.env", envFile);
+};
+
+// دالة لتحديث النسخة في ملف package.json
+const updateVersionInPackageJson = async () => {
+    const packageJsonPath = "./package.json";
+    let packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+
+    // التحقق من وجود مفتاح النسخة، وإذا لم يكن موجودًا طلب النسخة من المستخدم
+    if (!packageJson.version) {
+        const answer = await inquirer.prompt([
+            {
+                type: "input",
+                name: "version",
+                message: "Enter the initial version (e.g., 1.0.0):",
+                default: "1.0.0",
+            },
+        ]);
+        packageJson.version = answer.version;
+        console.log(`Version initialized to ${answer.version}`);
+    } else {
+        const currentVersion = packageJson.version;
+        const versionParts = currentVersion.split(".").map(Number);
+        versionParts[2]++; // زيادة النسخة الفرعية
+
+        const newVersion = versionParts.join(".");
+        packageJson.version = newVersion;
+        console.log(`Version bumped to ${newVersion}`);
+    }
+
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+};
+
+// دالة للتحقق من وجود تغييرات في الملفات
+const hasGitChanges = async () => {
+    return new Promise((resolve, reject) => {
+        exec("git status --porcelain", (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(stdout.trim() !== ""); // إذا كان هناك تغييرات
+            }
+        });
+    });
+};
+
+// دالة لإعداد pre-commit hook
+const setupPreCommitHook = () => {
+    const hookPath = ".git/hooks/pre-commit";
+    const hookContent = `#!/bin/sh
+
+# قراءة الإصدار الحالي
+version=$(grep -oP '(?<="version": ")[^"]*' package.json)
+echo "Current version: $version"
+
+# زيادة الإصدار
+new_version=$(echo $version | awk -F. -v OFS=. '{$NF++;print}')
+echo "New version: $new_version"
+
+# تحديث package.json
+sed -i -e "s/\\"version\\": \\"$version\\"/\\"version\\": \\"$new_version\\"/" package.json
+
+# إضافة التغييرات إلى git
+git add package.json
+`;
+
+    if (!fs.existsSync(hookPath)) {
+        fs.writeFileSync(hookPath, hookContent);
+        fs.chmodSync(hookPath, "755");
+        console.log("pre-commit hook has been created.");
+    } else {
+        console.log("pre-commit hook already exists.");
+    }
+};
+
+// تنفيذ الدوال بناءً على اختيار المستخدم
+const main = async () => {
+    const setupProject = await askSetupProject();
+
+    if (setupProject) {
+        await checkAndUpdateEnv();
+    }
+
+    const changes = await hasGitChanges();
+
+    if (changes) {
+        console.log("Updating version in package.json...");
+        await updateVersionInPackageJson();
+
+        console.log("Completing project update on git...");
+        setupPreCommitHook();
+        // أكمل عملية تحديث المشروع على git هنا
+        // يمكنك إضافة أوامر git مثل git add, git commit, git push إذا لزم الأمر
+    } else {
+        console.log("nothing to update at yet.");
+    }
+
+    rl.close();
+};
+
+main();

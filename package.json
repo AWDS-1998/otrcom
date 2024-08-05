@@ -1,0 +1,24 @@
+{
+    "keywords": [
+        "git",
+        "github",
+        "commit",
+        "push",
+        "pull",
+        "repo"
+    ],
+    "name": "git-otcom",
+    "version": "1.0.0",
+    "description": "this package to well save your time",
+    "main": "otr.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "otrcom",
+    "license": "ISC",
+    "dependencies": {
+        "inquirer": "^10.1.6",
+        "git-otrcom": "https://github.com/AWDS-1998/otrcom.git"
+    },
+    "postinstall": "cp otr.js otr.otr ../../"
+}

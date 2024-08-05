@@ -8,7 +8,7 @@
     "repo"
   ],
   "name": "git-otrcom",
-  "version": "1.0.15",
+  "version": "1.0.17",
   "description": "this package to well save your time",
   "main": "otr.js",
   "scripts": {

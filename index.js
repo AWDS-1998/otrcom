@@ -35,6 +35,10 @@ if (!projectRoot) {
 // الجذر النهائي للمشروع بجانب node_modules
 const destDir = projectRoot;
 
+// طباعة المسارات
+console.log(`currentDir is: ${currentDir}`);
+console.log(`node_modules is: ${path.join(destDir, "node_modules")}`);
+
 filesToCopy.forEach((file) => {
   const srcFile = path.join(currentDir, file);
   const destFile = path.join(destDir, file);
